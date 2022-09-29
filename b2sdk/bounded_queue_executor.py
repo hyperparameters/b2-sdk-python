@@ -8,6 +8,7 @@
 #
 ######################################################################
 
+from asyncio import futures
 import threading
 
 
@@ -35,6 +36,7 @@ class BoundedQueueExecutor:
         self.executor = executor
         self.semaphore = threading.Semaphore(queue_limit)
         self.num_exceptions = 0
+        self.futures = []
 
     def submit(self, fcn, *args, **kwargs):
         """
@@ -60,7 +62,9 @@ class BoundedQueueExecutor:
                 self.semaphore.release()
 
         # Submit the wrapped action.
-        return self.executor.submit(run_it)
+        future = self.executor.submit(run_it)
+        self.futures.append(future)
+        return future
 
     def shutdown(self):
         """
@@ -75,3 +79,7 @@ class BoundedQueueExecutor:
         :rtype: int
         """
         return self.num_exceptions
+
+    def terminate(self):
+        for future in self.futures:
+            future.cancel()

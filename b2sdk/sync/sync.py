@@ -148,6 +148,7 @@ class Synchronizer:
         dest_folder,
         now_millis,
         reporter,
+        event,
         encryption_settings_provider:
         AbstractSyncEncryptionSettingsProvider = SERVER_DEFAULT_SYNC_ENCRYPTION_SETTINGS_PROVIDER,
     ):
@@ -184,12 +185,12 @@ class Synchronizer:
         # when syncing lots of files.
         unbounded_executor = futures.ThreadPoolExecutor(max_workers=self.max_workers)
         queue_limit = self.max_workers + 1000
-        sync_executor = BoundedQueueExecutor(unbounded_executor, queue_limit=queue_limit)
+        self.sync_executor = BoundedQueueExecutor(unbounded_executor, queue_limit=queue_limit)
 
         if source_type == 'local' and reporter is not None:
             # Start the thread that counts the local files. That's the operation
             # that should be fastest, and it provides scale for the progress reporting.
-            sync_executor.submit(count_files, source_folder, reporter, self.policies_manager)
+            self.sync_executor.submit(count_files, source_folder, reporter, self.policies_manager)
 
         # Bucket for scheduling actions.
         # For bucket-to-bucket sync, the bucket for the API calls should be the destination.
@@ -209,11 +210,12 @@ class Synchronizer:
             encryption_settings_provider,
         ):
             logging.debug('scheduling action %s on bucket %s', action, action_bucket)
-            sync_executor.submit(action.run, action_bucket, reporter, self.dry_run)
+            self.sync_executor.submit(action.run, action_bucket, reporter, self.dry_run)
 
         # Wait for everything to finish
-        sync_executor.shutdown()
-        if sync_executor.get_num_exceptions() != 0:
+        self.sync_executor.shutdown()
+        reporter.report_done()
+        if self.sync_executor.get_num_exceptions() != 0:
             raise IncompleteSync('sync is incomplete')
 
     def _make_folder_sync_actions(
