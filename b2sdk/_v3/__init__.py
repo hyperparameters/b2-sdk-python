@@ -188,7 +188,6 @@ from b2sdk.sync.encryption_provider import AbstractSyncEncryptionSettingsProvide
 from b2sdk.sync.encryption_provider import BasicSyncEncryptionSettingsProvider
 from b2sdk.sync.encryption_provider import ServerDefaultSyncEncryptionSettingsProvider
 from b2sdk.sync.encryption_provider import SERVER_DEFAULT_SYNC_ENCRYPTION_SETTINGS_PROVIDER
-
 # scan
 
 from b2sdk.scan.exception import EnvironmentEncodingError

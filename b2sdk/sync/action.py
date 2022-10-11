@@ -45,8 +45,8 @@ class AbstractAction(metaclass=ABCMeta):
         """
         try:
             if not dry_run:
-                file_info = self.do_action(bucket, reporter)
-            self.do_report(bucket, reporter, file_info)
+                result = self.do_action(bucket, reporter)
+            self.do_report(bucket, reporter, result)
         except Exception as e:
             logger.exception('an exception occurred in a sync action')
             reporter.error(str(self) + ": " + repr(e) + ' ' + str(e))
@@ -143,9 +143,10 @@ class B2UploadAction(AbstractAction):
             progress_listener=progress_listener,
             encryption=encryption,
         )
-        return file_info
+        
+        return file_info,self.local_full_path
 
-    def do_report(self, bucket, reporter, file_info):
+    def do_report(self, bucket, reporter, result):
         """
         Report the uploading action performed.
 
@@ -153,7 +154,7 @@ class B2UploadAction(AbstractAction):
         :type bucket: b2sdk.bucket.Bucket
         :param reporter: a place to report errors
         """
-        reporter.report(self.relative_name, file_info)
+        reporter.report(self.relative_name, result)
         reporter.print_completion('upload ' + self.relative_name)
 
     def __str__(self):

@@ -142,15 +142,17 @@ class Synchronizer:
                 'must be one of :%s' % CompareVersionMode.__members__,
             )
 
+    
+
     def sync_folders(
         self,
         source_folder,
         dest_folder,
         now_millis,
         reporter,
-        event,
         encryption_settings_provider:
         AbstractSyncEncryptionSettingsProvider = SERVER_DEFAULT_SYNC_ENCRYPTION_SETTINGS_PROVIDER,
+        just_report=False,
     ):
         """
         Syncs two folders.  Always ensures that every file in the
@@ -183,7 +185,7 @@ class Synchronizer:
         #
         # We use an executor with a bounded queue to avoid using up lots of memory
         # when syncing lots of files.
-        unbounded_executor = futures.ThreadPoolExecutor(max_workers=self.max_workers)
+        unbounded_executor = futures.ThreadPoolExecutor(max_workers=self.max_workers,thread_name_prefix="sync-executor")
         queue_limit = self.max_workers + 1000
         self.sync_executor = BoundedQueueExecutor(unbounded_executor, queue_limit=queue_limit)
 
@@ -209,8 +211,11 @@ class Synchronizer:
             self.policies_manager,
             encryption_settings_provider,
         ):
-            logging.debug('scheduling action %s on bucket %s', action, action_bucket)
-            self.sync_executor.submit(action.run, action_bucket, reporter, self.dry_run)
+            if just_report:
+                logging.debug('reporting action %s on bucket %s', action, action_bucket)
+            else:
+                logging.debug('scheduling action %s on bucket %s', action, action_bucket)
+                self.sync_executor.submit(action.run, action_bucket, reporter, self.dry_run)
 
         # Wait for everything to finish
         self.sync_executor.shutdown()
@@ -328,3 +333,5 @@ class Synchronizer:
             encryption_settings_provider=encryption_settings_provider,
         )
         return policy.get_all_actions()
+
+
